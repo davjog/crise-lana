@@ -154,6 +154,21 @@
 
   #print-area{display:none}
 
+  .sync-status{font-size:12.5px;font-weight:600;color:var(--muted);background:var(--surface-2);
+    border:1px solid var(--line);border-radius:10px;padding:9px 11px;margin-bottom:6px}
+  .sync-status.ok{color:var(--teal-d);background:var(--teal-soft);border-color:var(--teal)}
+  .sync-status.err{color:var(--clay);background:var(--clay-bg);border-color:#eab5a8}
+  .sync-status.warn{color:#6b4e00;background:var(--amber-bg);border-color:#f2d98a}
+  .btn-gh{flex:1;padding:12px;border-radius:12px;font-size:13.5px;font-weight:700;
+    border:1px solid var(--teal);background:var(--teal-soft);color:var(--teal-d);
+    cursor:pointer;font-family:inherit}
+  .btn-gh:active{background:var(--teal);color:#fff}
+  #btn-sync.dirty{border-color:var(--amber)!important;background:var(--amber-bg)!important;color:#6b4e00!important}
+  #btn-sync.synced{border-color:var(--teal)!important;background:var(--teal-soft)!important;color:var(--teal-d)!important}
+  .sync-help{font-size:11.5px;color:var(--muted);line-height:1.5;margin-top:14px;
+    background:var(--surface-2);border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+  .sync-help b{color:var(--ink)}
+
   @media print{
     header,nav.tabs,.tools,.addbtn,.btn-del,.modal,
     #view-crises,#view-trait,#view-synth{display:none!important}
@@ -218,6 +233,7 @@
     <button onclick="exportCSV()">Exporter CSV</button>
     <button onclick="exportJSON()">Sauvegarde</button>
     <label>Restaurer<input type="file" accept="application/json" onchange="importJSON(this)"></label>
+    <button id="btn-sync" onclick="openSync()">☁ Sync</button>
   </div>
 </div>
 
@@ -286,6 +302,38 @@
       <button class="btn-save" onclick="saveTrait()">Enregistrer</button>
     </div>
     <button class="btn-del" id="del-trait" onclick="delTrait()">Supprimer</button>
+  </div>
+</div>
+
+<!-- Modal sync GitHub -->
+<div class="modal" id="modal-sync">
+  <div class="sheet">
+    <div class="grab"></div>
+    <h2>Synchronisation GitHub</h2>
+    <div id="sync-status" class="sync-status">—</div>
+    <label class="f">Propriétaire (compte GitHub)</label>
+    <input type="text" id="gh-owner" placeholder="davjog" autocomplete="off" autocapitalize="none">
+    <label class="f">Dépôt privé</label>
+    <input type="text" id="gh-repo" placeholder="crise-lana-data" autocomplete="off" autocapitalize="none">
+    <div class="rowf">
+      <div><label class="f">Fichier</label><input type="text" id="gh-path" placeholder="carnet.json" autocapitalize="none"></div>
+      <div><label class="f">Branche</label><input type="text" id="gh-branch" placeholder="main" autocapitalize="none"></div>
+    </div>
+    <label class="f">Jeton (fine-grained, Contents : R/W)</label>
+    <input type="password" id="gh-token" placeholder="github_pat_…" autocomplete="off" autocapitalize="none">
+    <div class="actions">
+      <button class="btn-cancel" onclick="closeSync()">Fermer</button>
+      <button class="btn-save" onclick="saveSync()">Enregistrer</button>
+    </div>
+    <div class="actions">
+      <button class="btn-gh" onclick="ghPull(true)">⤓ Charger depuis GitHub</button>
+      <button class="btn-gh" onclick="ghPush(true)">⤒ Envoyer vers GitHub</button>
+    </div>
+    <div class="sync-help">
+      <b>Sécurité :</b> le jeton reste sur cet appareil (jamais dans le code public). Utilise un jeton
+      <b>fine-grained</b> limité au seul dépôt privé, permission <b>Contents : Read and write</b>, avec une expiration.
+      En cas de perte du téléphone, révoque-le dans les réglages GitHub. Les données ne doivent jamais aller dans le dépôt public.
+    </div>
   </div>
 </div>
 
@@ -546,13 +594,13 @@ function saveCrise(){
   if(!obj.date){ alert("Indique au moins une date."); return; }
   if(editId){ for(var i=0;i<crises.length;i++){ if(crises[i].id===editId){ obj.id=editId; crises[i]=obj; } } }
   else{ obj.id=nextId(crises); crises.push(obj); }
-  save(); closeModal(); renderAll();
+  save(); closeModal(); renderAll(); syncAfterChange();
 }
 function delCrise(){
   if(!editId) return;
   if(!confirm("Supprimer cette crise ?")) return;
   crises=crises.filter(function(c){return c.id!==editId;});
-  save(); closeModal(); renderAll();
+  save(); closeModal(); renderAll(); syncAfterChange();
 }
 
 /* ---------- Modal traitement ---------- */
@@ -589,13 +637,13 @@ function saveTrait(){
   if(!obj.date||!obj.med){ alert("Indique une date et un médicament."); return; }
   if(editTId){ for(var i=0;i<trait.length;i++){ if(trait[i].id===editTId){ obj.id=editTId; trait[i]=obj; } } }
   else{ obj.id=nextId(trait); trait.push(obj); }
-  save(); closeModalT(); renderAll();
+  save(); closeModalT(); renderAll(); syncAfterChange();
 }
 function delTrait(){
   if(!editTId) return;
   if(!confirm("Supprimer ce traitement ?")) return;
   trait=trait.filter(function(t){return t.id!==editTId;});
-  save(); closeModalT(); renderAll();
+  save(); closeModalT(); renderAll(); syncAfterChange();
 }
 
 /* ---------- Export / import ---------- */
@@ -626,7 +674,7 @@ function importJSON(input){
       var data=JSON.parse(reader.result);
       if(data.crises) crises=data.crises;
       if(data.trait) trait=data.trait;
-      save(); loadTtt(); renderAll(); alert("Sauvegarde restaurée.");
+      save(); loadTtt(); renderAll(); syncAfterChange(); alert("Sauvegarde restaurée.");
     }catch(e){ alert("Fichier illisible."); }
     input.value="";
   };
@@ -714,13 +762,125 @@ function printReport(){
   window.print();
 }
 
+/* ---------- Sync GitHub (dépôt privé) ---------- */
+var GH_KEY="carnet_gh_v1";
+var gh={owner:"",repo:"",path:"carnet.json",branch:"main",token:"",sha:""};
+var ghDirty=false;
+
+function persistGh(){ try{ localStorage.setItem(GH_KEY,JSON.stringify(gh)); }catch(e){} }
+function ghConfigured(){ return !!(gh.owner && gh.repo && gh.path && gh.token); }
+function ghVal(id){ var e=document.getElementById(id); return e?(e.value||"").trim():""; }
+function ghSetVal(id,v){ var e=document.getElementById(id); if(e) e.value=v||""; }
+
+function loadSyncConfig(){
+  try{ var s=localStorage.getItem(GH_KEY); if(s){ var o=JSON.parse(s);
+    for(var k in o){ if(o.hasOwnProperty(k)) gh[k]=o[k]; } } }catch(e){}
+  if(!gh.path) gh.path="carnet.json";
+  if(!gh.branch) gh.branch="main";
+}
+function fillSyncFields(){
+  ghSetVal("gh-owner",gh.owner); ghSetVal("gh-repo",gh.repo);
+  ghSetVal("gh-path",gh.path); ghSetVal("gh-branch",gh.branch); ghSetVal("gh-token",gh.token);
+}
+function openSync(){ fillSyncFields();
+  setSyncState(ghConfigured()?"ok":"off", ghConfigured()?"Configuré.":"Non configuré.");
+  document.getElementById("modal-sync").className="modal open";
+}
+function closeSync(){ document.getElementById("modal-sync").className="modal"; }
+function saveSync(){
+  gh.owner=ghVal("gh-owner"); gh.repo=ghVal("gh-repo");
+  gh.path=ghVal("gh-path")||"carnet.json"; gh.branch=ghVal("gh-branch")||"main";
+  gh.token=ghVal("gh-token");
+  persistGh();
+  setSyncState(ghConfigured()?"ok":"warn", ghConfigured()?"Enregistré ✓":"Renseigne au moins dépôt et jeton.");
+}
+
+function setSyncState(kind,msg){
+  var el=document.getElementById("sync-status");
+  if(el){ el.textContent=msg; el.className="sync-status"+(kind==="ok"?" ok":kind==="error"?" err":kind==="warn"||kind==="offline"?" warn":""); }
+  var b=document.getElementById("btn-sync");
+  if(b){ b.className=""; if(ghConfigured()){ b.className = (ghDirty||kind==="offline"||kind==="error")?"dirty":"synced"; } }
+}
+
+/* base64 compatible UTF-8 (accents) */
+function b64enc(str){ return btoa(unescape(encodeURIComponent(str))); }
+function b64dec(b64){ return decodeURIComponent(escape(atob(String(b64).replace(/\n/g,"")))); }
+function ghHeaders(){ return {
+  "Authorization":"Bearer "+gh.token,
+  "Accept":"application/vnd.github+json",
+  "X-GitHub-Api-Version":"2022-11-28"
+};}
+function ghUrl(){ return "https://api.github.com/repos/"+encodeURIComponent(gh.owner)+
+  "/"+encodeURIComponent(gh.repo)+"/contents/"+gh.path; }
+
+function ghPull(manual){
+  if(!ghConfigured()){ if(manual) setSyncState("warn","Configure d'abord la synchronisation."); return; }
+  if(manual && (crises.length||trait.length)){
+    if(!confirm("Remplacer les données de CET appareil par celles de GitHub ?")) return;
+  }
+  setSyncState("","Chargement…");
+  fetch(ghUrl()+"?ref="+encodeURIComponent(gh.branch), {headers:ghHeaders(), cache:"no-store"})
+  .then(function(r){
+    if(r.status===404){ setSyncState("warn","Aucune donnée sur GitHub — fais un premier envoi."); return null; }
+    if(r.status===401||r.status===403){ throw new Error("jeton refusé ("+r.status+")"); }
+    if(!r.ok){ throw new Error("HTTP "+r.status); }
+    return r.json();
+  })
+  .then(function(j){
+    if(!j) return;
+    var data=JSON.parse(b64dec(j.content));
+    if(data.crises) crises=data.crises;
+    if(data.trait) trait=data.trait;
+    gh.sha=j.sha; persistGh();
+    save(); loadTtt(); renderAll();
+    ghDirty=false; setSyncState("ok","Chargé depuis GitHub ✓");
+  })
+  .catch(function(e){ setSyncState("error","Erreur de chargement : "+e.message); });
+}
+
+function ghPush(manual){
+  if(!ghConfigured()){ if(manual) setSyncState("warn","Configure d'abord la synchronisation."); return; }
+  if(!navigator.onLine){ ghDirty=true; setSyncState("offline","Hors ligne — modifs non envoyées."); return; }
+  setSyncState("","Envoi…");
+  var content=b64enc(JSON.stringify({crises:crises,trait:trait},null,2));
+  // récupère le sha courant pour éviter les conflits
+  fetch(ghUrl()+"?ref="+encodeURIComponent(gh.branch), {headers:ghHeaders(), cache:"no-store"})
+  .then(function(r){ if(r.status===404) return null; if(!r.ok) throw new Error("HTTP "+r.status); return r.json(); })
+  .then(function(j){
+    var payload={ message:"Carnet crises — "+new Date().toISOString().slice(0,19).replace("T"," "),
+      content:content, branch:gh.branch };
+    if(j && j.sha) payload.sha=j.sha;
+    return fetch(ghUrl(), {method:"PUT", headers:ghHeaders(), body:JSON.stringify(payload)});
+  })
+  .then(function(r){ if(!r.ok) throw new Error("HTTP "+r.status); return r.json(); })
+  .then(function(j){ if(j&&j.content) gh.sha=j.content.sha; persistGh();
+    ghDirty=false; setSyncState("ok","Envoyé ✓"); })
+  .catch(function(e){ ghDirty=true; setSyncState("error","Erreur d'envoi : "+e.message); });
+}
+
+/* appelé après chaque modification locale */
+function syncAfterChange(){
+  if(!ghConfigured()) return;
+  ghDirty=true;
+  if(navigator.onLine){ ghPush(false); }
+  else setSyncState("offline","Hors ligne — modifs non envoyées.");
+}
+
+
 /* init */
 load(); loadTtt(); renderAll();
+loadSyncConfig(); setSyncState(ghConfigured()?"ok":"off","");
+/* nouvel appareil vide + sync configurée -> on récupère les données automatiquement */
+if(ghConfigured() && !crises.length && !trait.length){ ghPull(false); }
+
 document.getElementById("modal").addEventListener("click",function(e){ if(e.target===this) closeModal(); });
 document.getElementById("modal-t").addEventListener("click",function(e){ if(e.target===this) closeModalT(); });
+document.getElementById("modal-sync").addEventListener("click",function(e){ if(e.target===this) closeSync(); });
 document.addEventListener("keydown",function(e){
-  if(e.key==="Escape"){ closeModal(); closeModalT(); }
+  if(e.key==="Escape"){ closeModal(); closeModalT(); closeSync(); }
 });
+window.addEventListener("online", function(){ if(ghConfigured() && ghDirty){ ghPush(false); } });
+window.addEventListener("offline", function(){ if(ghConfigured()){ setSyncState("offline","Hors ligne — modifs non envoyées."); } });
 
 /* ---------- Service worker (installable + hors ligne) ---------- */
 if("serviceWorker" in navigator){
