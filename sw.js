@@ -1,6 +1,6 @@
 /* Carnet Crises — service worker
    Bump CACHE quand tu modifies index.html pour forcer la mise à jour. */
-var CACHE = "carnet-crises-v1";
+var CACHE = "carnet-crises-v4";
 var SHELL = [
   "./",
   "./index.html",
