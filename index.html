@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0e5f66">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Crises">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<title>Carnet de suivi — Crises</title>
+<style>
+  :root{
+    --bg:#eaeef3; --surface:#ffffff; --surface-2:#f4f7fa;
+    --ink:#1b2733; --muted:#5e6b78; --line:#d9e0e8;
+    --teal:#0e5f66; --teal-d:#0a4a50; --teal-soft:#e3f0f0;
+    --amber:#f0b429; --amber-bg:#fdf1cf;
+    --clay:#b8412c; --clay-bg:#f8e2dc;
+    --shadow:0 1px 2px rgba(20,40,60,.06),0 6px 20px rgba(20,40,60,.08);
+    --radius:14px;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+    background:var(--bg); color:var(--ink); line-height:1.45;
+    -webkit-text-size-adjust:100%; padding-bottom:90px;
+  }
+  .wrap{max-width:640px;margin:0 auto;padding:0 14px}
+
+  header{
+    position:sticky;top:0;z-index:20;
+    background:linear-gradient(180deg,var(--teal),var(--teal-d));
+    color:#fff;padding:calc(env(safe-area-inset-top) + 14px) 0 12px;
+    box-shadow:0 2px 12px rgba(10,60,66,.28);
+  }
+  header .wrap{display:flex;align-items:center;justify-content:space-between;gap:10px}
+  header h1{font-size:17px;margin:0;font-weight:700;letter-spacing:.2px}
+  header .sub{font-size:12px;opacity:.85;margin-top:2px;font-weight:400}
+  .addbtn{
+    background:#fff;color:var(--teal-d);border:0;border-radius:11px;
+    font-size:14px;font-weight:700;padding:10px 14px;cursor:pointer;white-space:nowrap;
+    box-shadow:0 2px 6px rgba(0,0,0,.15);
+  }
+  .addbtn:active{transform:translateY(1px)}
+
+  nav.tabs{display:flex;gap:4px;margin:14px 0 4px;background:var(--surface-2);
+    padding:4px;border-radius:12px;border:1px solid var(--line)}
+  nav.tabs button{flex:1;border:0;background:transparent;padding:9px 6px;border-radius:9px;
+    font-size:13px;font-weight:600;color:var(--muted);cursor:pointer;font-family:inherit}
+  nav.tabs button.active{background:var(--surface);color:var(--teal);box-shadow:var(--shadow)}
+
+  .year-head{display:flex;align-items:center;gap:10px;margin:20px 2px 10px}
+  .year-head span{font-size:13px;font-weight:700;color:var(--muted);letter-spacing:1px}
+  .year-head .rule{flex:1;height:1px;background:var(--line)}
+  .year-head .cnt{font-size:11px;color:var(--muted);background:var(--surface);
+    border:1px solid var(--line);border-radius:20px;padding:2px 9px;font-weight:600}
+
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);
+    padding:13px 14px;margin:9px 0;box-shadow:var(--shadow);cursor:pointer;position:relative}
+  .card:active{background:var(--surface-2)}
+  .card.severe{border-left:4px solid var(--clay)}
+  .card .top{display:flex;align-items:baseline;justify-content:space-between;gap:10px}
+  .card .date{font-weight:700;font-size:15px}
+  .card .dur{font-size:12.5px;font-weight:700;color:#6b4e00;background:var(--amber-bg);
+    border:1px solid #f2d98a;border-radius:8px;padding:2px 9px;white-space:nowrap}
+  .card .type{font-size:13px;color:var(--teal);font-weight:600;margin-top:3px}
+  .card .ctx{font-size:13px;color:var(--muted);margin-top:2px}
+  .card .post{font-size:12.5px;color:var(--muted);margin-top:5px}
+  .card .post b{color:var(--ink);font-weight:600}
+  .tags{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px}
+  .tag{font-size:11.5px;padding:2px 8px;border-radius:7px;background:var(--teal-soft);
+    color:var(--teal-d);font-weight:600}
+  .tag.sec{background:var(--clay-bg);color:var(--clay)}
+  .note{font-size:12.5px;color:var(--muted);margin-top:7px;font-style:italic}
+
+  /* Traitement */
+  .trow{background:var(--surface);border:1px solid var(--line);border-radius:12px;
+    padding:11px 13px;margin:8px 0;box-shadow:var(--shadow);display:flex;gap:12px;cursor:pointer}
+  .trow:active{background:var(--surface-2)}
+  .trow .td{font-size:12px;color:var(--muted);min-width:74px;font-weight:600;padding-top:1px}
+  .trow .tm{font-weight:700;font-size:14px}
+  .trow .ta{font-size:12.5px;color:var(--teal-d);font-weight:600;margin-top:1px}
+  .trow .tx{font-size:12.5px;color:var(--muted);margin-top:2px}
+
+  /* Synthèse */
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:6px}
+  .stat{background:var(--surface);border:1px solid var(--line);border-radius:12px;
+    padding:14px;box-shadow:var(--shadow)}
+  .stat .n{font-size:26px;font-weight:800;color:var(--teal)}
+  .stat .l{font-size:12px;color:var(--muted);margin-top:2px}
+  .bars{background:var(--surface);border:1px solid var(--line);border-radius:12px;
+    padding:14px;box-shadow:var(--shadow);margin-top:10px}
+  .bars h3{margin:0 0 10px;font-size:13px;color:var(--muted);font-weight:700;letter-spacing:.4px}
+  .bar{display:flex;align-items:center;gap:9px;margin:7px 0}
+  .bar .yr{font-size:12px;width:38px;color:var(--muted);font-weight:600}
+  .bar .track{flex:1;background:var(--surface-2);border-radius:6px;height:20px;overflow:hidden}
+  .bar .fill{height:100%;background:linear-gradient(90deg,var(--teal),#3a949a);border-radius:6px}
+  .bar .v{font-size:12px;width:22px;text-align:right;font-weight:700}
+
+  .tools{display:flex;gap:8px;flex-wrap:wrap;margin:16px 0}
+  .tools button,.tools label{flex:1;min-width:120px;text-align:center;border:1px solid var(--line);
+    background:var(--surface);border-radius:11px;padding:11px;font-size:13px;font-weight:600;
+    color:var(--ink);cursor:pointer;box-shadow:var(--shadow);font-family:inherit}
+  .tools button:active,.tools label:active{background:var(--surface-2)}
+  .tools input[type=file]{display:none}
+
+  .empty{text-align:center;color:var(--muted);padding:40px 20px;font-size:14px}
+
+  /* Modal */
+  .modal{position:fixed;inset:0;background:rgba(20,35,50,.5);z-index:50;display:none;
+    align-items:flex-end;justify-content:center}
+  .modal.open{display:flex}
+  .sheet{background:var(--surface);width:100%;max-width:640px;border-radius:18px 18px 0 0;
+    max-height:92vh;overflow-y:auto;padding:16px 16px calc(env(safe-area-inset-bottom) + 20px)}
+  .sheet h2{font-size:16px;margin:4px 0 14px;text-align:center}
+  .grab{width:38px;height:4px;background:var(--line);border-radius:3px;margin:0 auto 10px}
+  label.f{display:block;font-size:12.5px;font-weight:700;color:var(--muted);margin:12px 0 5px}
+  input[type=date],input[type=text],input[type=number],select,textarea{
+    width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:10px;
+    font-size:15px;font-family:inherit;color:var(--ink);background:var(--surface-2)}
+  textarea{min-height:64px;resize:vertical}
+  .rowf{display:flex;gap:10px}
+  .rowf>div{flex:1}
+  .chk{display:flex;align-items:center;gap:8px;margin-top:8px;font-size:14px}
+  .chk input{width:20px;height:20px}
+  .chips{display:flex;flex-wrap:wrap;gap:7px;margin-top:6px}
+  .chip{border:1px solid var(--line);background:var(--surface-2);border-radius:20px;
+    padding:7px 13px;font-size:13px;cursor:pointer;user-select:none;font-weight:600;color:var(--muted)}
+  .chip.on{background:var(--teal-soft);border-color:var(--teal);color:var(--teal-d)}
+  .chip.sev.on{background:var(--clay-bg);border-color:var(--clay);color:var(--clay)}
+  .actions{display:flex;gap:10px;margin-top:20px}
+  .actions button{flex:1;padding:13px;border-radius:12px;font-size:15px;font-weight:700;
+    border:0;cursor:pointer;font-family:inherit}
+  .btn-save{background:var(--teal);color:#fff}
+  .btn-save:active{background:var(--teal-d)}
+  .btn-cancel{background:var(--surface-2);color:var(--muted);border:1px solid var(--line)!important}
+  .btn-del{background:var(--clay-bg);color:var(--clay);margin-top:10px;width:100%;
+    padding:12px;border:1px solid #eab5a8;border-radius:12px;font-size:14px;font-weight:700;
+    cursor:pointer;font-family:inherit;display:none}
+
+  @media print{
+    header,nav.tabs,.tools,.addbtn,.btn-del,.modal{display:none!important}
+    body{background:#fff;padding:0}
+    .card,.trow,.stat,.bars{box-shadow:none;break-inside:avoid}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <div>
+      <h1>Carnet de suivi — Crises</h1>
+      <div class="sub" id="hsub">—</div>
+    </div>
+    <button class="addbtn" onclick="openCrise()">+ Crise</button>
+  </div>
+</header>
+
+<div class="wrap">
+  <nav class="tabs">
+    <button id="t-crises" class="active" onclick="tab('crises')">Crises</button>
+    <button id="t-trait" onclick="tab('trait')">Traitement</button>
+    <button id="t-synth" onclick="tab('synth')">Synthèse</button>
+  </nav>
+
+  <section id="view-crises"></section>
+
+  <section id="view-trait" style="display:none">
+    <div style="display:flex;justify-content:flex-end;margin-top:14px">
+      <button class="addbtn" style="background:var(--teal);color:#fff" onclick="openTrait()">+ Traitement</button>
+    </div>
+    <div id="trait-list"></div>
+  </section>
+
+  <section id="view-synth" style="display:none"></section>
+
+  <div class="tools">
+    <button onclick="window.print()">Imprimer / PDF</button>
+    <button onclick="exportCSV()">Exporter CSV</button>
+    <button onclick="exportJSON()">Sauvegarde</button>
+    <label>Restaurer<input type="file" accept="application/json" onchange="importJSON(this)"></label>
+  </div>
+</div>
+
+<!-- Modal crise -->
+<div class="modal" id="modal">
+  <div class="sheet">
+    <div class="grab"></div>
+    <h2 id="mtitle">Nouvelle crise</h2>
+    <div class="rowf">
+      <div><label class="f">Date</label><input type="date" id="f-date"></div>
+      <div><label class="f">Heure / moment</label><input type="text" id="f-ctx" placeholder="17h45, kiné…"></div>
+    </div>
+    <label class="f">Type de crise</label>
+    <select id="f-type">
+      <option>Clonique généralisée</option>
+      <option>Tonico-clonique</option>
+      <option>Partielle</option>
+      <option>Absence</option>
+      <option>Clonique généralisée + absence</option>
+      <option>Autre</option>
+    </select>
+    <div class="rowf">
+      <div><label class="f">Durée (min)</label><input type="number" id="f-dur" min="0" step="1" inputmode="numeric"></div>
+      <div style="display:flex;align-items:flex-end;padding-bottom:2px">
+        <label class="chk"><input type="checkbox" id="f-min"> durée minimum (≥)</label>
+      </div>
+    </div>
+    <label class="f">Traitement d'urgence donné</label>
+    <div class="chips" id="chips-ttt"></div>
+    <label class="f">Secours / hospitalisation</label>
+    <div class="chips" id="chips-sec"></div>
+    <label class="f">Phase post-critique</label>
+    <input type="text" id="f-post" placeholder="courte, 40 min, paralysie…">
+    <label class="f">Notes</label>
+    <textarea id="f-note" placeholder="reste à la maison, augmentation traitement…"></textarea>
+    <div class="actions">
+      <button class="btn-cancel" onclick="closeModal()">Annuler</button>
+      <button class="btn-save" onclick="saveCrise()">Enregistrer</button>
+    </div>
+    <button class="btn-del" id="del-crise" onclick="delCrise()">Supprimer cette crise</button>
+  </div>
+</div>
+
+<!-- Modal traitement -->
+<div class="modal" id="modal-t">
+  <div class="sheet">
+    <div class="grab"></div>
+    <h2 id="mtitle-t">Nouveau traitement</h2>
+    <div class="rowf">
+      <div><label class="f">Date</label><input type="date" id="tf-date"></div>
+      <div><label class="f">Médicament</label><input type="text" id="tf-med" placeholder="Briviact…"></div>
+    </div>
+    <label class="f">Action</label>
+    <input type="text" id="tf-act" placeholder="Introduction, Augmentation, Arrêt…">
+    <label class="f">Détails / posologie</label>
+    <textarea id="tf-det" placeholder="250 mg 1 semaine puis 500…"></textarea>
+    <div class="actions">
+      <button class="btn-cancel" onclick="closeModalT()">Annuler</button>
+      <button class="btn-save" onclick="saveTrait()">Enregistrer</button>
+    </div>
+    <button class="btn-del" id="del-trait" onclick="delTrait()">Supprimer</button>
+  </div>
+</div>
+
+<script>
+"use strict";
+var KEY="carnet_crises_v1", KEYT="carnet_trait_v1";
+var TTT=["Buccolam","Rivotril","Oxygène","Rivotril IV","Keppra IV"];
+var SEC=["Pompiers","SAMU","Hélicoptère","Urgences","Hospitalisation"];
+
+var crises=[], trait=[], editId=null, editTId=null, selTtt=[], selSec=[];
+
+function load(){
+  try{
+    var c=localStorage.getItem(KEY);
+    crises = c ? JSON.parse(c) : [];
+    var t=localStorage.getItem(KEYT);
+    trait = t ? JSON.parse(t) : [];
+  }catch(e){ crises=[]; trait=[]; }
+}
+function save(){
+  try{ localStorage.setItem(KEY,JSON.stringify(crises));
+       localStorage.setItem(KEYT,JSON.stringify(trait)); }catch(e){}
+}
+function nextId(arr){var m=0;for(var i=0;i<arr.length;i++){if(arr[i].id>m)m=arr[i].id;}return m+1;}
+
+var MOIS=["janv.","févr.","mars","avr.","mai","juin","juil.","août","sept.","oct.","nov.","déc."];
+function fmtDate(s){
+  var p=s.split("-"); if(p.length!==3) return s;
+  return parseInt(p[2],10)+" "+MOIS[parseInt(p[1],10)-1]+" "+p[0];
+}
+function yearOf(s){return s.split("-")[0];}
+function daysSince(s){
+  var d=new Date(s+"T00:00:00"); var now=new Date();
+  return Math.floor((now-d)/86400000);
+}
+
+function tab(name){
+  var names=["crises","trait","synth"];
+  for(var i=0;i<names.length;i++){
+    document.getElementById("view-"+names[i]).style.display = (names[i]===name)?"block":"none";
+    document.getElementById("t-"+names[i]).className = (names[i]===name)?"active":"";
+  }
+  if(name==="synth") renderSynth();
+}
+
+function renderHeader(){
+  var el=document.getElementById("hsub");
+  if(!crises.length){ el.textContent="Aucune crise enregistrée"; return; }
+  var sorted=crises.slice().sort(function(a,b){return a.date<b.date?1:-1;});
+  var d=daysSince(sorted[0].date);
+  var txt=crises.length+" crise"+(crises.length>1?"s":"")+" · dernière il y a "+d+" j";
+  el.textContent=txt;
+}
+
+function renderCrises(){
+  var host=document.getElementById("view-crises");
+  if(!crises.length){ host.innerHTML='<div class="empty">Aucune crise enregistrée.<br>Appuie sur « + Crise » pour commencer,<br>ou « Restaurer » pour importer une sauvegarde.</div>'; return; }
+  var sorted=crises.slice().sort(function(a,b){return a.date<b.date?1:-1;});
+  var html="", curYear=null;
+  for(var i=0;i<sorted.length;i++){
+    var c=sorted[i], y=yearOf(c.date);
+    if(y!==curYear){
+      curYear=y;
+      var cnt=0; for(var j=0;j<sorted.length;j++){ if(yearOf(sorted[j].date)===y) cnt++; }
+      html+='<div class="year-head"><span>'+y+'</span><div class="rule"></div><div class="cnt">'+cnt+' crise'+(cnt>1?'s':'')+'</div></div>';
+    }
+    html+=cardHTML(c);
+  }
+  host.innerHTML=html;
+}
+function esc(s){return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}
+function cardHTML(c){
+  var severe = c.sec && c.sec.length;
+  var dur = (c.min?"≥ ":"")+c.dur+" min";
+  var h='<div class="card'+(severe?' severe':'')+'" onclick="openCrise('+c.id+')">';
+  h+='<div class="top"><div class="date">'+fmtDate(c.date)+'</div><div class="dur">'+dur+'</div></div>';
+  h+='<div class="type">'+esc(c.type)+'</div>';
+  if(c.ctx) h+='<div class="ctx">'+esc(c.ctx)+'</div>';
+  if(c.post) h+='<div class="post"><b>Post-critique :</b> '+esc(c.post)+'</div>';
+  if((c.ttt&&c.ttt.length)||(c.sec&&c.sec.length)){
+    h+='<div class="tags">';
+    // compte les doublons (ex. 2 Buccolam -> "Buccolam ×2")
+    var counts={}; for(var a=0;a<(c.ttt||[]).length;a++){counts[c.ttt[a]]=(counts[c.ttt[a]]||0)+1;}
+    for(var key in counts){ if(counts.hasOwnProperty(key)){ h+='<span class="tag">'+esc(key)+(counts[key]>1?' ×'+counts[key]:'')+'</span>'; } }
+    for(var s=0;s<(c.sec||[]).length;s++){ h+='<span class="tag sec">'+esc(c.sec[s])+'</span>'; }
+    h+='</div>';
+  }
+  if(c.note) h+='<div class="note">'+esc(c.note)+'</div>';
+  h+='</div>';
+  return h;
+}
+
+function renderTrait(){
+  var host=document.getElementById("trait-list");
+  if(!trait.length){ host.innerHTML='<div class="empty">Aucun traitement enregistré.</div>'; return; }
+  var sorted=trait.slice().sort(function(a,b){return a.date<b.date?1:-1;});
+  var h="";
+  for(var i=0;i<sorted.length;i++){
+    var t=sorted[i];
+    h+='<div class="trow" onclick="openTrait('+t.id+')">';
+    h+='<div class="td">'+fmtDate(t.date)+'</div>';
+    h+='<div><div class="tm">'+esc(t.med)+'</div>';
+    if(t.act) h+='<div class="ta">'+esc(t.act)+'</div>';
+    if(t.det) h+='<div class="tx">'+esc(t.det)+'</div>';
+    h+='</div></div>';
+  }
+  host.innerHTML=h;
+}
+
+function renderSynth(){
+  var host=document.getElementById("view-synth");
+  var n=crises.length;
+  var durs=[]; for(var i=0;i<crises.length;i++){ if(typeof crises[i].dur==="number") durs.push(crises[i].dur); }
+  var avg = durs.length ? Math.round(durs.reduce(function(a,b){return a+b;},0)/durs.length*10)/10 : 0;
+  var mx = durs.length ? Math.max.apply(null,durs) : 0;
+  var byYear={};
+  for(var j=0;j<crises.length;j++){ var y=yearOf(crises[j].date); byYear[y]=(byYear[y]||0)+1; }
+  var years=Object.keys(byYear).sort();
+  var maxY=0; for(var k in byYear){ if(byYear[k]>maxY) maxY=byYear[k]; }
+
+  var h='<div class="grid">';
+  h+='<div class="stat"><div class="n">'+n+'</div><div class="l">crises enregistrées</div></div>';
+  h+='<div class="stat"><div class="n">'+avg+'</div><div class="l">durée moyenne (min)</div></div>';
+  h+='<div class="stat"><div class="n">'+mx+'</div><div class="l">durée maximale (min)</div></div>';
+  var last = crises.length ? daysSince(crises.slice().sort(function(a,b){return a.date<b.date?1:-1;})[0].date) : "—";
+  h+='<div class="stat"><div class="n">'+last+'</div><div class="l">jours depuis la dernière</div></div>';
+  h+='</div>';
+
+  h+='<div class="bars"><h3>CRISES PAR ANNÉE</h3>';
+  for(var y2=0;y2<years.length;y2++){
+    var yy=years[y2], v=byYear[yy], w=maxY?Math.round(v/maxY*100):0;
+    h+='<div class="bar"><div class="yr">'+yy+'</div><div class="track"><div class="fill" style="width:'+w+'%"></div></div><div class="v">'+v+'</div></div>';
+  }
+  h+='</div>';
+  host.innerHTML=h;
+}
+
+/* ---------- Chips ---------- */
+function buildChips(){
+  var ct=document.getElementById("chips-ttt"); ct.innerHTML="";
+  for(var i=0;i<TTT.length;i++){ ct.appendChild(mkChip(TTT[i],false)); }
+  var cs=document.getElementById("chips-sec"); cs.innerHTML="";
+  for(var j=0;j<SEC.length;j++){ cs.appendChild(mkChip(SEC[j],true)); }
+}
+function mkChip(label,isSec){
+  var d=document.createElement("div");
+  d.className="chip"+(isSec?" sev":""); d.textContent=label;
+  d.onclick=function(){
+    var arr=isSec?selSec:selTtt;
+    var idx=arr.indexOf(label);
+    if(idx>=0){ arr.splice(idx,1); d.className="chip"+(isSec?" sev":""); }
+    else{ arr.push(label); d.className="chip"+(isSec?" sev":"")+" on"; }
+  };
+  return d;
+}
+function paintChips(){
+  var ct=document.getElementById("chips-ttt").children;
+  for(var i=0;i<ct.length;i++){ ct[i].className="chip"+(selTtt.indexOf(ct[i].textContent)>=0?" on":""); }
+  var cs=document.getElementById("chips-sec").children;
+  for(var j=0;j<cs.length;j++){ cs[j].className="chip sev"+(selSec.indexOf(cs[j].textContent)>=0?" on":""); }
+}
+
+/* ---------- Modal crise ---------- */
+function openCrise(id){
+  buildChips();
+  selTtt=[]; selSec=[];
+  if(typeof id==="number"){
+    var c=null; for(var i=0;i<crises.length;i++){ if(crises[i].id===id) c=crises[i]; }
+    if(!c) return;
+    editId=id;
+    document.getElementById("mtitle").textContent="Modifier la crise";
+    document.getElementById("f-date").value=c.date;
+    document.getElementById("f-ctx").value=c.ctx||"";
+    document.getElementById("f-type").value=c.type;
+    document.getElementById("f-dur").value=c.dur;
+    document.getElementById("f-min").checked=!!c.min;
+    document.getElementById("f-post").value=c.post||"";
+    document.getElementById("f-note").value=c.note||"";
+    selTtt=(c.ttt||[]).slice(); selSec=(c.sec||[]).slice();
+    document.getElementById("del-crise").style.display="block";
+  }else{
+    editId=null;
+    document.getElementById("mtitle").textContent="Nouvelle crise";
+    document.getElementById("f-date").value=new Date().toISOString().slice(0,10);
+    document.getElementById("f-ctx").value="";
+    document.getElementById("f-type").value="Clonique généralisée";
+    document.getElementById("f-dur").value="";
+    document.getElementById("f-min").checked=false;
+    document.getElementById("f-post").value="";
+    document.getElementById("f-note").value="";
+    document.getElementById("del-crise").style.display="none";
+  }
+  paintChips();
+  document.getElementById("modal").className="modal open";
+}
+function closeModal(){ document.getElementById("modal").className="modal"; }
+function saveCrise(){
+  var dur=parseInt(document.getElementById("f-dur").value,10);
+  var obj={
+    date:document.getElementById("f-date").value,
+    ctx:document.getElementById("f-ctx").value.trim(),
+    type:document.getElementById("f-type").value,
+    dur:isNaN(dur)?0:dur,
+    min:document.getElementById("f-min").checked,
+    post:document.getElementById("f-post").value.trim(),
+    note:document.getElementById("f-note").value.trim(),
+    ttt:selTtt.slice(), sec:selSec.slice()
+  };
+  if(!obj.date){ alert("Indique au moins une date."); return; }
+  if(editId){ for(var i=0;i<crises.length;i++){ if(crises[i].id===editId){ obj.id=editId; crises[i]=obj; } } }
+  else{ obj.id=nextId(crises); crises.push(obj); }
+  save(); closeModal(); renderAll();
+}
+function delCrise(){
+  if(!editId) return;
+  if(!confirm("Supprimer cette crise ?")) return;
+  crises=crises.filter(function(c){return c.id!==editId;});
+  save(); closeModal(); renderAll();
+}
+
+/* ---------- Modal traitement ---------- */
+function openTrait(id){
+  if(typeof id==="number"){
+    var t=null; for(var i=0;i<trait.length;i++){ if(trait[i].id===id) t=trait[i]; }
+    if(!t) return;
+    editTId=id;
+    document.getElementById("mtitle-t").textContent="Modifier le traitement";
+    document.getElementById("tf-date").value=t.date;
+    document.getElementById("tf-med").value=t.med;
+    document.getElementById("tf-act").value=t.act||"";
+    document.getElementById("tf-det").value=t.det||"";
+    document.getElementById("del-trait").style.display="block";
+  }else{
+    editTId=null;
+    document.getElementById("mtitle-t").textContent="Nouveau traitement";
+    document.getElementById("tf-date").value=new Date().toISOString().slice(0,10);
+    document.getElementById("tf-med").value="";
+    document.getElementById("tf-act").value="";
+    document.getElementById("tf-det").value="";
+    document.getElementById("del-trait").style.display="none";
+  }
+  document.getElementById("modal-t").className="modal open";
+}
+function closeModalT(){ document.getElementById("modal-t").className="modal"; }
+function saveTrait(){
+  var obj={
+    date:document.getElementById("tf-date").value,
+    med:document.getElementById("tf-med").value.trim(),
+    act:document.getElementById("tf-act").value.trim(),
+    det:document.getElementById("tf-det").value.trim()
+  };
+  if(!obj.date||!obj.med){ alert("Indique une date et un médicament."); return; }
+  if(editTId){ for(var i=0;i<trait.length;i++){ if(trait[i].id===editTId){ obj.id=editTId; trait[i]=obj; } } }
+  else{ obj.id=nextId(trait); trait.push(obj); }
+  save(); closeModalT(); renderAll();
+}
+function delTrait(){
+  if(!editTId) return;
+  if(!confirm("Supprimer ce traitement ?")) return;
+  trait=trait.filter(function(t){return t.id!==editTId;});
+  save(); closeModalT(); renderAll();
+}
+
+/* ---------- Export / import ---------- */
+function dl(name,content,mime){
+  var blob=new Blob([content],{type:mime});
+  var url=URL.createObjectURL(blob);
+  var a=document.createElement("a"); a.href=url; a.download=name; a.click();
+  setTimeout(function(){URL.revokeObjectURL(url);},1500);
+}
+function exportCSV(){
+  var rows=[["Date","Type","Moment/Contexte","Duree_min","Duree_min_estimee","Post-critique","Traitement urgence","Secours/Hospitalisation","Notes"]];
+  var sorted=crises.slice().sort(function(a,b){return a.date<b.date?-1:1;});
+  for(var i=0;i<sorted.length;i++){
+    var c=sorted[i];
+    rows.push([c.date,c.type,c.ctx,c.dur,c.min?"oui":"non",c.post,(c.ttt||[]).join(" + "),(c.sec||[]).join(" + "),c.note]);
+  }
+  var csv=rows.map(function(r){return r.map(function(x){var s=String(x==null?"":x).replace(/"/g,'""');return '"'+s+'"';}).join(";");}).join("\n");
+  dl("crises_epilepsie.csv","\ufeff"+csv,"text/csv;charset=utf-8");
+}
+function exportJSON(){
+  dl("carnet_sauvegarde.json",JSON.stringify({crises:crises,trait:trait},null,2),"application/json");
+}
+function importJSON(input){
+  var file=input.files[0]; if(!file) return;
+  var reader=new FileReader();
+  reader.onload=function(){
+    try{
+      var data=JSON.parse(reader.result);
+      if(data.crises) crises=data.crises;
+      if(data.trait) trait=data.trait;
+      save(); renderAll(); alert("Sauvegarde restaurée.");
+    }catch(e){ alert("Fichier illisible."); }
+    input.value="";
+  };
+  reader.readAsText(file);
+}
+
+function renderAll(){ renderHeader(); renderCrises(); renderTrait(); renderSynth(); }
+
+/* init */
+load(); renderAll();
+document.getElementById("modal").addEventListener("click",function(e){ if(e.target===this) closeModal(); });
+document.getElementById("modal-t").addEventListener("click",function(e){ if(e.target===this) closeModalT(); });
+document.addEventListener("keydown",function(e){
+  if(e.key==="Escape"){ closeModal(); closeModalT(); }
+});
+
+/* ---------- Service worker (installable + hors ligne) ---------- */
+if("serviceWorker" in navigator){
+  window.addEventListener("load",function(){
+    navigator.serviceWorker.register("sw.js").catch(function(){});
+  });
+}
+</script>
+</body>
+</html>
