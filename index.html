@@ -68,6 +68,7 @@
   .card .dur{font-size:12.5px;font-weight:700;color:#6b4e00;background:var(--amber-bg);
     border:1px solid #f2d98a;border-radius:8px;padding:2px 9px;white-space:nowrap}
   .card .type{font-size:13px;color:var(--teal);font-weight:600;margin-top:3px}
+  .card .gap{font-size:11.5px;color:var(--muted);font-weight:600;margin-top:2px}
   .card .ctx{font-size:13px;color:var(--muted);margin-top:2px}
   .card .post{font-size:12.5px;color:var(--muted);margin-top:5px}
   .card .post b{color:var(--ink);font-weight:600}
@@ -107,6 +108,9 @@
     color:var(--ink);cursor:pointer;box-shadow:var(--shadow);font-family:inherit}
   .tools button:active,.tools label:active{background:var(--surface-2)}
   .tools input[type=file]{display:none}
+  .tools select{flex:1;min-width:120px;border:1px solid var(--line);background:var(--surface);
+    border-radius:11px;padding:11px;font-size:13px;font-weight:600;color:var(--ink);
+    box-shadow:var(--shadow);font-family:inherit}
 
   .empty{text-align:center;color:var(--muted);padding:40px 20px;font-size:14px}
 
@@ -132,6 +136,12 @@
     padding:7px 13px;font-size:13px;cursor:pointer;user-select:none;font-weight:600;color:var(--muted)}
   .chip.on{background:var(--teal-soft);border-color:var(--teal);color:var(--teal-d)}
   .chip.sev.on{background:var(--clay-bg);border-color:var(--clay);color:var(--clay)}
+  .addrow{display:flex;gap:8px;margin-top:8px}
+  .addrow input{flex:1}
+  .addrow button{white-space:nowrap;border:1px solid var(--teal);background:var(--teal-soft);
+    color:var(--teal-d);border-radius:10px;padding:0 16px;font-size:13px;font-weight:700;
+    cursor:pointer;font-family:inherit}
+  .addrow button:active{background:var(--teal);color:#fff}
   .actions{display:flex;gap:10px;margin-top:20px}
   .actions button{flex:1;padding:13px;border-radius:12px;font-size:15px;font-weight:700;
     border:0;cursor:pointer;font-family:inherit}
@@ -142,10 +152,33 @@
     padding:12px;border:1px solid #eab5a8;border-radius:12px;font-size:14px;font-weight:700;
     cursor:pointer;font-family:inherit;display:none}
 
+  #print-area{display:none}
+
   @media print{
-    header,nav.tabs,.tools,.addbtn,.btn-del,.modal{display:none!important}
-    body{background:#fff;padding:0}
-    .card,.trow,.stat,.bars{box-shadow:none;break-inside:avoid}
+    header,nav.tabs,.tools,.addbtn,.btn-del,.modal,
+    #view-crises,#view-trait,#view-synth{display:none!important}
+    body{background:#fff;padding:0;color:#000;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    #print-area{display:block!important;padding:0 2mm}
+    .p-head{border-bottom:2px solid #000;padding-bottom:6px;margin-bottom:10px}
+    .p-title{font-size:18px;font-weight:800}
+    .p-sub{font-size:11px;color:#333;margin-top:2px}
+    .p-year + .p-year{break-before:page;page-break-before:always}
+    .p-yhead{font-size:13px;font-weight:800;margin:12px 0 6px;
+      border-bottom:1px solid #999;padding-bottom:3px}
+    .p-yhead span{font-weight:400;font-size:11px;color:#444}
+    .p-c{border:1px solid #ccc;border-radius:6px;padding:6px 9px;margin:6px 0;
+      break-inside:avoid;page-break-inside:avoid}
+    .p-c-top{display:flex;justify-content:space-between;font-weight:700;font-size:13px}
+    .p-c-type{font-size:12px;color:#111;margin-top:1px}
+    .p-c-line{font-size:11.5px;margin-top:2px}
+    .p-c-note{font-size:11px;font-style:italic;color:#333;margin-top:3px}
+    .p-tsec{margin-top:14px;break-inside:avoid;page-break-inside:avoid}
+    .p-tsec-h{font-size:13px;font-weight:800;border-bottom:1px solid #999;
+      padding-bottom:3px;margin-bottom:6px}
+    .p-trow{font-size:11.5px;margin:4px 0}
+    .p-tdate{color:#444}
+    .p-tdet{font-size:11px;color:#333;margin-left:8px}
+    .p-empty{font-size:12px;color:#333}
   }
 </style>
 </head>
@@ -180,12 +213,15 @@
   <section id="view-synth" style="display:none"></section>
 
   <div class="tools">
-    <button onclick="window.print()">Imprimer / PDF</button>
+    <select id="print-year" aria-label="Période à imprimer"></select>
+    <button onclick="printReport()">Imprimer / PDF</button>
     <button onclick="exportCSV()">Exporter CSV</button>
     <button onclick="exportJSON()">Sauvegarde</button>
     <label>Restaurer<input type="file" accept="application/json" onchange="importJSON(this)"></label>
   </div>
 </div>
+
+<div id="print-area"></div>
 
 <!-- Modal crise -->
 <div class="modal" id="modal">
@@ -213,6 +249,11 @@
     </div>
     <label class="f">Traitement d'urgence donné</label>
     <div class="chips" id="chips-ttt"></div>
+    <div class="addrow">
+      <input type="text" id="ttt-new" placeholder="Autre traitement…" autocomplete="off"
+        onkeydown="if(event.key==='Enter'){event.preventDefault();addTtt();}">
+      <button type="button" class="addttt" onclick="addTtt()">Ajouter</button>
+    </div>
     <label class="f">Secours / hospitalisation</label>
     <div class="chips" id="chips-sec"></div>
     <label class="f">Phase post-critique</label>
@@ -250,8 +291,10 @@
 
 <script>
 "use strict";
-var KEY="carnet_crises_v1", KEYT="carnet_trait_v1";
-var TTT=["Buccolam","Rivotril","Oxygène","Rivotril IV","Keppra IV"];
+var KEY="carnet_crises_v1", KEYT="carnet_trait_v1", KEYC="carnet_ttt_custom_v1";
+var TTT_DEF=["Buccolam","Rivotril","Oxygène","Rivotril IV","Keppra IV"];
+var tttCustom=[];
+var TTT=TTT_DEF.slice();
 var SEC=["Pompiers","SAMU","Hélicoptère","Urgences","Hospitalisation"];
 
 var crises=[], trait=[], editId=null, editTId=null, selTtt=[], selSec=[];
@@ -280,6 +323,19 @@ function daysSince(s){
   var d=new Date(s+"T00:00:00"); var now=new Date();
   return Math.floor((now-d)/86400000);
 }
+function daysBetween(d1,d2){
+  var a=new Date(d1+"T00:00:00"), b=new Date(d2+"T00:00:00");
+  return Math.round((b-a)/86400000);
+}
+/* Écart en jours avec la crise précédente, indexé par id (sur TOUT l'historique). */
+function gapMap(){
+  var asc=crises.slice().sort(function(a,b){return a.date<b.date?-1:1;});
+  var m={};
+  for(var i=0;i<asc.length;i++){
+    m[asc[i].id] = (i===0) ? null : daysBetween(asc[i-1].date, asc[i].date);
+  }
+  return m;
+}
 
 function tab(name){
   var names=["crises","trait","synth"];
@@ -303,6 +359,7 @@ function renderCrises(){
   var host=document.getElementById("view-crises");
   if(!crises.length){ host.innerHTML='<div class="empty">Aucune crise enregistrée.<br>Appuie sur « + Crise » pour commencer,<br>ou « Restaurer » pour importer une sauvegarde.</div>'; return; }
   var sorted=crises.slice().sort(function(a,b){return a.date<b.date?1:-1;});
+  var gaps=gapMap();
   var html="", curYear=null;
   for(var i=0;i<sorted.length;i++){
     var c=sorted[i], y=yearOf(c.date);
@@ -311,16 +368,19 @@ function renderCrises(){
       var cnt=0; for(var j=0;j<sorted.length;j++){ if(yearOf(sorted[j].date)===y) cnt++; }
       html+='<div class="year-head"><span>'+y+'</span><div class="rule"></div><div class="cnt">'+cnt+' crise'+(cnt>1?'s':'')+'</div></div>';
     }
-    html+=cardHTML(c);
+    html+=cardHTML(c, gaps[c.id]);
   }
   host.innerHTML=html;
 }
 function esc(s){return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}
-function cardHTML(c){
+function cardHTML(c, gap){
   var severe = c.sec && c.sec.length;
   var dur = (c.min?"≥ ":"")+c.dur+" min";
   var h='<div class="card'+(severe?' severe':'')+'" onclick="openCrise('+c.id+')">';
   h+='<div class="top"><div class="date">'+fmtDate(c.date)+'</div><div class="dur">'+dur+'</div></div>';
+  if(typeof gap==="number"){
+    h+='<div class="gap">'+gap+' j depuis la précédente</div>';
+  }
   h+='<div class="type">'+esc(c.type)+'</div>';
   if(c.ctx) h+='<div class="ctx">'+esc(c.ctx)+'</div>';
   if(c.post) h+='<div class="post"><b>Post-critique :</b> '+esc(c.post)+'</div>';
@@ -365,12 +425,19 @@ function renderSynth(){
   var years=Object.keys(byYear).sort();
   var maxY=0; for(var k in byYear){ if(byYear[k]>maxY) maxY=byYear[k]; }
 
+  var gv=gapMap(); var gl=[];
+  for(var g in gv){ if(gv.hasOwnProperty(g) && typeof gv[g]==="number") gl.push(gv[g]); }
+  var gAvg = gl.length ? Math.round(gl.reduce(function(a,b){return a+b;},0)/gl.length) : "—";
+  var gMax = gl.length ? Math.max.apply(null,gl) : "—";
+
   var h='<div class="grid">';
   h+='<div class="stat"><div class="n">'+n+'</div><div class="l">crises enregistrées</div></div>';
   h+='<div class="stat"><div class="n">'+avg+'</div><div class="l">durée moyenne (min)</div></div>';
   h+='<div class="stat"><div class="n">'+mx+'</div><div class="l">durée maximale (min)</div></div>';
   var last = crises.length ? daysSince(crises.slice().sort(function(a,b){return a.date<b.date?1:-1;})[0].date) : "—";
   h+='<div class="stat"><div class="n">'+last+'</div><div class="l">jours depuis la dernière</div></div>';
+  h+='<div class="stat"><div class="n">'+gAvg+'</div><div class="l">intervalle moyen (j)</div></div>';
+  h+='<div class="stat"><div class="n">'+gMax+'</div><div class="l">plus long intervalle (j)</div></div>';
   h+='</div>';
 
   h+='<div class="bars"><h3>CRISES PAR ANNÉE</h3>';
@@ -383,6 +450,29 @@ function renderSynth(){
 }
 
 /* ---------- Chips ---------- */
+function rebuildTTT(){ TTT=TTT_DEF.concat(tttCustom); }
+function loadTtt(){
+  try{ var s=localStorage.getItem(KEYC); tttCustom = s?JSON.parse(s):[]; }catch(e){ tttCustom=[]; }
+  // récupère aussi les traitements personnalisés déjà présents dans les crises
+  for(var i=0;i<crises.length;i++){
+    var arr=crises[i].ttt||[];
+    for(var j=0;j<arr.length;j++){
+      if(TTT_DEF.indexOf(arr[j])<0 && tttCustom.indexOf(arr[j])<0){ tttCustom.push(arr[j]); }
+    }
+  }
+  rebuildTTT();
+  saveTtt();
+}
+function saveTtt(){ try{ localStorage.setItem(KEYC,JSON.stringify(tttCustom)); }catch(e){} }
+function addTtt(){
+  var inp=document.getElementById("ttt-new");
+  var v=(inp.value||"").replace(/\s+/g," ").trim();
+  if(!v) return;
+  if(TTT.indexOf(v)<0){ tttCustom.push(v); saveTtt(); rebuildTTT(); }
+  if(selTtt.indexOf(v)<0){ selTtt.push(v); }
+  inp.value="";
+  buildChips(); paintChips();
+}
 function buildChips(){
   var ct=document.getElementById("chips-ttt"); ct.innerHTML="";
   for(var i=0;i<TTT.length;i++){ ct.appendChild(mkChip(TTT[i],false)); }
@@ -536,17 +626,96 @@ function importJSON(input){
       var data=JSON.parse(reader.result);
       if(data.crises) crises=data.crises;
       if(data.trait) trait=data.trait;
-      save(); renderAll(); alert("Sauvegarde restaurée.");
+      save(); loadTtt(); renderAll(); alert("Sauvegarde restaurée.");
     }catch(e){ alert("Fichier illisible."); }
     input.value="";
   };
   reader.readAsText(file);
 }
 
-function renderAll(){ renderHeader(); renderCrises(); renderTrait(); renderSynth(); }
+function renderAll(){ renderHeader(); renderCrises(); renderTrait(); renderSynth(); populateYears(); }
+
+/* ---------- Impression par année ---------- */
+function populateYears(){
+  var sel=document.getElementById("print-year"); if(!sel) return;
+  var prev=sel.value;
+  var ys={}; for(var i=0;i<crises.length;i++){ ys[yearOf(crises[i].date)]=1; }
+  var arr=Object.keys(ys).sort(function(a,b){return a<b?1:-1;}); // décroissant
+  var h='<option value="">Toutes les années</option>';
+  for(var j=0;j<arr.length;j++){ h+='<option value="'+arr[j]+'">Année '+arr[j]+'</option>'; }
+  sel.innerHTML=h;
+  if(prev){ sel.value=prev; }
+}
+
+function printCrise(c, gap){
+  var dur=(c.min?"≥ ":"")+c.dur+" min";
+  var counts={}; for(var a=0;a<(c.ttt||[]).length;a++){counts[c.ttt[a]]=(counts[c.ttt[a]]||0)+1;}
+  var ttt=[]; for(var k in counts){ if(counts.hasOwnProperty(k)){ ttt.push(k+(counts[k]>1?" ×"+counts[k]:"")); } }
+  var sec=(c.sec||[]);
+  var h='<div class="p-c">';
+  h+='<div class="p-c-top"><span>'+fmtDate(c.date)+'</span><span>'+dur+'</span></div>';
+  h+='<div class="p-c-type">'+esc(c.type)+(c.ctx?' · '+esc(c.ctx):'')+
+     (typeof gap==="number"?' · '+gap+' j depuis la précédente':'')+'</div>';
+  if(c.post) h+='<div class="p-c-line"><b>Post-critique :</b> '+esc(c.post)+'</div>';
+  if(ttt.length) h+='<div class="p-c-line"><b>Traitement d\'urgence :</b> '+esc(ttt.join(", "))+'</div>';
+  if(sec.length) h+='<div class="p-c-line"><b>Secours / hospit. :</b> '+esc(sec.join(", "))+'</div>';
+  if(c.note) h+='<div class="p-c-note">'+esc(c.note)+'</div>';
+  h+='</div>';
+  return h;
+}
+
+function printReport(){
+  var y=document.getElementById("print-year").value;   // "" = toutes
+  var area=document.getElementById("print-area");
+  var cAsc=crises.slice().sort(function(a,b){return a.date<b.date?-1:1;});
+  var list=y ? cAsc.filter(function(c){return yearOf(c.date)===y;}) : cAsc;
+  var tAsc=trait.slice().sort(function(a,b){return a.date<b.date?-1:1;});
+  var tlist=y ? tAsc.filter(function(t){return yearOf(t.date)===y;}) : tAsc;
+
+  var today=fmtDate(new Date().toISOString().slice(0,10));
+  var gaps=gapMap();
+  var h='<div class="p-head"><div class="p-title">Carnet de suivi — Crises</div>';
+  h+='<div class="p-sub">'+(y?("Année "+y):"Toutes les années")+' · imprimé le '+today+'</div></div>';
+
+  if(!list.length){
+    h+='<div class="p-empty">Aucune crise pour cette période.</div>';
+  }else{
+    var curY=null;
+    for(var i=0;i<list.length;i++){
+      var c=list[i], cy=yearOf(c.date);
+      if(cy!==curY){
+        if(curY!==null && !y){ h+='</div>'; }   // ferme le bloc année précédent (saut de page)
+        curY=cy;
+        var yc=list.filter(function(x){return yearOf(x.date)===cy;});
+        var durs=[]; for(var d=0;d<yc.length;d++){ if(typeof yc[d].dur==="number") durs.push(yc[d].dur); }
+        var avg=durs.length?Math.round(durs.reduce(function(a,b){return a+b;},0)/durs.length*10)/10:0;
+        var mx=durs.length?Math.max.apply(null,durs):0;
+        var hosp=yc.filter(function(x){return x.sec&&x.sec.length;}).length;
+        if(!y){ h+='<div class="p-year">'; }
+        h+='<div class="p-yhead">'+cy+' — '+yc.length+' crise'+(yc.length>1?'s':'')+
+           '<span> · moy. '+avg+' min · max '+mx+' min · '+hosp+' avec secours/hospit.</span></div>';
+      }
+      h+=printCrise(c, gaps[c.id]);
+    }
+    if(!y){ h+='</div>'; }   // ferme le dernier bloc année
+  }
+
+  if(tlist.length){
+    h+='<div class="p-tsec"><div class="p-tsec-h">Traitements'+(y?(" — "+y):"")+'</div>';
+    for(var t=0;t<tlist.length;t++){
+      var tt=tlist[t];
+      h+='<div class="p-trow"><span class="p-tdate">'+fmtDate(tt.date)+'</span> — <b>'+esc(tt.med)+'</b>'+
+         (tt.act?' · '+esc(tt.act):'')+(tt.det?'<div class="p-tdet">'+esc(tt.det)+'</div>':'')+'</div>';
+    }
+    h+='</div>';
+  }
+
+  area.innerHTML=h;
+  window.print();
+}
 
 /* init */
-load(); renderAll();
+load(); loadTtt(); renderAll();
 document.getElementById("modal").addEventListener("click",function(e){ if(e.target===this) closeModal(); });
 document.getElementById("modal-t").addEventListener("click",function(e){ if(e.target===this) closeModalT(); });
 document.addEventListener("keydown",function(e){
