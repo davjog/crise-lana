@@ -1,6 +1,6 @@
 /* Carnet Crises — service worker
    Bump CACHE quand tu modifies index.html pour forcer la mise à jour. */
-var CACHE = "carnet-crises-v4";
+var CACHE = "carnet-crises-v5";
 var SHELL = [
   "./",
   "./index.html",
@@ -36,6 +36,11 @@ self.addEventListener("activate", function(e){
 self.addEventListener("fetch", function(e){
   var req = e.request;
   if(req.method !== "GET") return;
+
+  // Ne jamais intercepter/mettre en cache le cross-origin (API GitHub, etc.)
+  var url;
+  try{ url = new URL(req.url); }catch(err){ return; }
+  if(url.origin !== self.location.origin) return;
 
   var accept = req.headers.get("accept") || "";
   var isHTML = req.mode === "navigate" || accept.indexOf("text/html") !== -1;
